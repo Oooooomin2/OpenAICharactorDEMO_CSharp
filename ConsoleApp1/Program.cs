@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using OpenAI_API;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -7,14 +8,11 @@ namespace ConsoleApp1
 {
     internal class Program
     {
-        private static readonly HttpClient _httpClient = new HttpClient();
         static async Task Main(string[] args)
         {
-            const string apiKey = "APIKEY";
-            const string url = "https://api.openai.com/v1/chat/completions";
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-            var content = InitializeContent();
-
+            var openApi = new OpenAIAPI("APIKEY");
+            var chat = openApi.Chat.CreateConversation();
+            chat.AppendSystemMessage("あなたはヤンキーであり、不良です。私が言うことに対して全部喧嘩をするような感じで言い返してください。敬語は使わないでください。");
             while (true)
             {
                 Console.Write("おれ: ");
@@ -23,33 +21,10 @@ namespace ConsoleApp1
                 {
                     break;
                 }
-
-                content.Add(new Messages() { Role = "user", Content = myContent });
-                var response = await GetResponseFromAI(url, content);
-                Console.WriteLine($"AIヤンキー: {response.Choices[0].Message.Content}");
+                chat.AppendUserInput(myContent);
+                var response = await chat.GetResponseFromChatbotAsync();
+                Console.WriteLine($"AIヤンキー: {response}");
             }
-        }
-
-        private static List<Messages> InitializeContent()
-        {
-            return new List<Messages>
-            {
-                new Messages() { Role = "system", Content = "あなたはヤンキーであり、不良です。私が言うことに対して全部喧嘩をするような感じで言い返してください。敬語は使わないでください。" }
-            };
-        }
-
-        private static async Task<Response> GetResponseFromAI(string url, List<Messages> content)
-        {
-            var requestBody = new RequestBody
-            {
-                Model = "gpt-3.5-turbo",
-                Messages = content
-            };
-            var json = JsonSerializer.Serialize(requestBody);
-            var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var result = await (await _httpClient.PostAsync(url, stringContent)).Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<Response>(result);
         }
     }
 
